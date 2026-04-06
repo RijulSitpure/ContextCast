@@ -1,0 +1,58 @@
+# --- Python & Environment ---
+venv_stable/
+bin/
+include/
+lib/
+share/
+etc/
+__pycache__/
+*.pyc
+pyvenv.cfg
+
+# --- Large AI Models & Data ---
+# These are too big for GitHub and should be downloaded locally
+sd_model/
+data/
+
+# --- Temporary Media Outputs (Crucial) ---
+# You don't want every test podcast on your GitHub
+*.mp3
+*.mp4
+*.png
+!public/*.png   # Keeps UI icons if they exist in public
+output_*.mp4
+temp_*.mp3
+podcast_audio.mp3
+podcast_visual.png
+optimist.mp3
+critic.mp3
+part_*.mp3
+test_*.mp3
+
+# --- Frontend / Node ---
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/bun.lockb
+frontend/bun.lock
+
+# --- OS Specific ---
+.DS_Store
+Thumbs.db
+
+# --- Backend (ai_studio) ---
+ai_studio/venv_stable/
+ai_studio/__pycache__/
+ai_studio/data/
+ai_studio/*.mp3
+ai_studio/*.mp4
+ai_studio/*.png
+
+# --- Frontend ---
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/bun.lockb
+
+# --- OS Specific ---
+.DS_Store
