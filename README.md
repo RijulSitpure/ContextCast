@@ -1,7 +1,3 @@
-This updated README is designed to look elite on your GitHub profile. I've added a **Architecture Diagram** section and polished the formatting to highlight the "Full-Stack" nature of the project.
-
----
-
 # 🎙️ ContextCast AI: Multimodal RAG-to-Video Pipeline
 
 **ContextCast** is an end-to-end AI platform that transforms complex PDF documents into high-fidelity, 2-minute video podcasts. By orchestrating a sophisticated **RAG (Retrieval-Augmented Generation)** pipeline, the system generates technical debates between AI host personas, synthesized with neural voices and dynamic generative visuals.
@@ -94,10 +90,3 @@ npm run dev
 **Rijul Sitpure**
 * **Degree:** B.Tech in Data Science
 * **University:** Manipal University
-
----
-
-### 💡 Final Tip for your GitHub:
-Once you upload the screenshot to your repo, make sure the filename in the README matches (e.g., `dashboard.png`). This README now positions you as a serious developer who understands both **AI Orchestration** and **Full-Stack Engineering**.
-
-**Ready to update your `README.md` and finish the night on a high note?**
