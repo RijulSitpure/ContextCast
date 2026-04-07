@@ -25,7 +25,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Persona to Voice Mapping
 PERSONA_MAP = {
     "expert-skeptic": {
         "Optimist": "en-US-GuyNeural", 
@@ -52,86 +51,97 @@ async def generate_podcast(
             if not os.path.exists("data"): os.makedirs("data")
             
             # 1. UPLOAD
-            yield f"data: {json.dumps({'step': 'uploading', 'msg': 'Saving PDF to Vector Store...'})}\n\n"
+            yield f"data: {json.dumps({'step': 'uploading', 'msg': 'Saving PDF...'})}\n\n"
             pdf_path = os.path.join("data", file.filename)
             with open(pdf_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
             
             # 2. RAG
-            yield f"data: {json.dumps({'step': 'vectorizing', 'msg': 'Performing Semantic Retrieval...'})}\n\n"
+            yield f"data: {json.dumps({'step': 'vectorizing', 'msg': 'Retrieving Context...'})}\n\n"
             context = get_context_from_pdf(pdf_path, topic)
             
-            # 3. LLM (Deep Dive Prompt with Randomness)
-            yield f"data: {json.dumps({'step': 'thinking', 'msg': 'Llama 3 is composing a fresh 2-minute deep dive...'})}\n\n"
+            # 3. LLM (Ultra-Strict Prompt)
+            yield f"data: {json.dumps({'step': 'thinking', 'msg': 'Generating 2-minute script...'})}\n\n"
             
             prompt = f"""
-            SYSTEM: You are a professional podcast producer.
+            SYSTEM: You are a professional podcast writer.
             CONTEXT: {context}
             TOPIC: {topic}
-            TASK: Write a lengthy, detailed 10-line technical debate between an 'Optimist' and a 'Critic'.
-            The dialogue should be intellectual, debating specific nuances of the context provided.
-            Line 1: Optimist
-            Line 2: Critic
-            ... (exactly 10 lines total)
-            FORMAT: Speaker: Text. 
-            STRICT RULE: Do not include intros, outros, or stage directions.
+            TASK: Write a 10-line debate between 'Optimist' and 'Critic'.
+            Each line MUST be a long paragraph (at least 5 sentences) explaining technical details.
+            
+            STRICT FORMAT:
+            Optimist: [Text]
+            Critic: [Text]
+            (Repeat for 10 lines total)
+            
+            DO NOT use labels like 'Speaker 1' or 'Host'. Use ONLY 'Optimist' and 'Critic'.
+            DO NOT include any intro or conversational filler.
             """
 
-            # UPDATED: Added 'options' for randomness and context
             response_data = ollama.generate(
                 model='llama3', 
                 prompt=prompt,
                 options={
-                    "temperature": 0.8,    # Increases creativity/length
-                    "num_predict": 1000,   # Ensures it doesn't cut off early
-                    "top_p": 0.9,          # Diversity of word choice
-                    "seed": int(time.time()) # Forces a fresh response every time
+                    "temperature": 0.8,
+                    "num_predict": 3000, 
+                    "seed": int(time.time())
                 }
             )
             response = response_data['response']
+            print(f"DEBUG SCRIPT:\n{response[:500]}...") # Print first 500 chars
 
-            # 4. RENDERING
-            yield f"data: {json.dumps({'step': 'rendering', 'msg': 'Synthesizing Neural Dialogue...'})}\n\n"
+            # 4. RENDERING (With Auto-Alternate Fallback)
+            yield f"data: {json.dumps({'step': 'rendering', 'msg': 'Synthesizing Neural Voices...'})}\n\n"
             
             selected_voices = PERSONA_MAP.get(persona, PERSONA_MAP["expert-skeptic"])
-            lines = [l for l in response.strip().split('\n') if ":" in l]
+            voice_list = list(selected_voices.values()) # [Optimist_Voice, Critic_Voice]
+            
+            raw_lines = [l.strip() for l in response.strip().split('\n') if ":" in l]
             combined_audio = AudioSegment.empty()
             
-            for i, line in enumerate(lines):
-                # SPLIT & STRIP: Remove the 'Optimist:' label from the audio text
+            for i, line in enumerate(raw_lines):
                 parts = line.split(":", 1)
                 if len(parts) < 2: continue
                 
-                speaker_label = parts[0].strip()
+                # 1. CLEAN SPEAKER LABEL
+                speaker_label = parts[0].replace("*", "").strip()
                 raw_text = parts[1].strip()
-                
-                # CLEANING: Remove stage directions like (laughs) or [thinks]
                 clean_text = re.sub(r'[\(\[].*?[\)\]]', '', raw_text)
                 
-                # Map labels to the specific Persona Voice
-                voice_id = selected_voices.get(speaker_label, "en-US-AriaNeural")
+                # 2. VOICE ASSIGNMENT (SMART FALLBACK)
+                # If LLM uses the wrong name, we alternate voices based on line number (Even/Odd)
+                if "Optimist" in speaker_label:
+                    voice_id = voice_list[0]
+                elif "Critic" in speaker_label:
+                    voice_id = voice_list[1]
+                else:
+                    # Fallback: Line 0, 2, 4 = Voice 1 | Line 1, 3, 5 = Voice 2
+                    voice_id = voice_list[i % 2]
+                
+                print(f"DEBUG: Processing Line {i} | Speaker: {speaker_label} | Voice: {voice_id}")
                 
                 temp_name = f"temp_{i}.mp3"
                 await generate_voice(clean_text, voice_id, temp_name)
                 
                 if os.path.exists(temp_name) and os.path.getsize(temp_name) > 100:
-                    combined_audio += AudioSegment.from_mp3(temp_name)
+                    segment = AudioSegment.from_mp3(temp_name)
+                    combined_audio += segment + AudioSegment.silent(duration=600)
                     os.remove(temp_name)
 
             combined_audio.export("podcast_audio.mp3", format="mp3")
+            print(f"✅ Final Audio Length: {len(combined_audio)/1000}s")
 
-            yield f"data: {json.dumps({'step': 'rendering', 'msg': 'Imaging the Scene...'})}\n\n"
-            generate_image(f"Cinematic futuristic lab, {topic}, hyperrealistic, 8k", "podcast_visual.png")
-            
-            yield f"data: {json.dumps({'step': 'rendering', 'msg': 'Assembling Full Render...'})}\n\n"
+            # 5. IMAGE & VIDEO
+            yield f"data: {json.dumps({'step': 'rendering', 'msg': 'Imaging and Rendering...'})}\n\n"
+            generate_image(f"Cinematic futuristic tech podcast studio, {topic}, 8k", "podcast_visual.png")
             
             timestamp = int(time.time())
             final_video_name = f"output_{timestamp}.mp4"
             create_video_segment("podcast_visual.png", "podcast_audio.mp3", final_video_name)
             
-            # 5. COMPLETE
             video_url = f"http://127.0.0.1:8000/video/{final_video_name}"
-            yield f"data: {json.dumps({'step': 'complete', 'msg': 'Deep Dive Production Complete!', 'video_url': video_url})}\n\n"
+            yield f"data: {json.dumps({'step': 'complete', 'msg': 'Success!', 'video_url': video_url})}\n\n"
 
         except Exception as e:
             print(f"ERROR: {e}")
