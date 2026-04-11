@@ -60,7 +60,7 @@ async def generate_podcast(
             yield f"data: {json.dumps({'step': 'vectorizing', 'msg': 'Retrieving Context...'})}\n\n"
             context = get_context_from_pdf(pdf_path, topic)
             
-            # 3. LLM (Ultra-Strict Prompt)
+            # 3. LLM
             yield f"data: {json.dumps({'step': 'thinking', 'msg': 'Generating 2-minute script...'})}\n\n"
             
             prompt = f"""
